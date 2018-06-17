@@ -1,0 +1,31 @@
+[DEFAULT]
+downloadPattern: smallest
+
+[settings]
+# Where do we save the files being downloaded?
+localSavePath: /downloads
+
+# Hostname to connect to (for rutorrent and scp)
+myServer: localhost
+
+# Path to get us to the rutorrent plugs
+myruTorrentPath: /rutorrent/plugins
+
+# Username and password for login
+myUsername: myusername
+myPassword: mypassword
+
+# What order should we download in?
+#smallest (default), largest, newest, oldest
+#downloadPattern: oldest
+
+# Seconds to wait between downloads
+delayBetweenDownloads: 10
+
+# The Maximum size to automatically download in bytes.
+# This is total torrent size for multi_file torrents.
+# Example:  maxSize: 5000000000  is equal to 5 gigs
+maxSize: 420000000
+
+# Labels to ignore from downloading automatically
+ignoreLabels: downloaded,downloading,seeding
