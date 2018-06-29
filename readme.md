@@ -1,5 +1,10 @@
 # SeedBoxBuddy
 (readme a work in progress)
+
+## Quick Start
+- Copy the sample config to settings.ini, and add your seedbox credentials.
+- Run sbb.py
+
 ## What it does
 Automatically download from your seedbox on the schedule you define, and label torrents once they've been downloaded.
 
