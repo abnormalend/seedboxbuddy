@@ -1,12 +1,12 @@
-[DEFAULT]
-downloadPattern: smallest
-
 [settings]
 # Where do we save the files being downloaded?
 localSavePath: /downloads
 
 # Hostname to connect to (for rutorrent and scp)
 myServer: localhost
+
+# What kind of server are we using?  Currently only ruTorrent
+; serverType: ruTorrent
 
 # Path to get us to the rutorrent plugs
 myruTorrentPath: /rutorrent/plugins
@@ -16,16 +16,28 @@ myUsername: myusername
 myPassword: mypassword
 
 # What order should we download in?
-#smallest (default), largest, newest, oldest
-#downloadPattern: oldest
+# smallest (default), largest, newest, oldest
+; downloadPattern: oldest
 
-# Seconds to wait between downloads
-delayBetweenDownloads: 10
+# What do we want to do if there's a duplicate?
+# valid choices: skip (default), overwrite
+; duplicate_action: overwrite
 
 # The Maximum size to automatically download in bytes.
 # This is total torrent size for multi_file torrents.
 # Example:  maxSize: 5000000000  is equal to 5 gigs
-maxSize: 420000000
+maxSize: 500000000
 
 # Labels to ignore from downloading automatically
-ignoreLabels: downloaded,downloading,seeding
+; ignoreLabels: downloaded,downloading,seeding,duplicate
+
+# Do we want to only run during certain hours?
+limit_hours: True
+
+# If limit_hours is enabled, then the time to start in 24 hour clock
+start_time: 01:00
+
+# If limit_hours is enabled, then the time to end in 24 hour clock
+# Note: A new download will not be started if the estimated finish time is
+# later than the stop time.
+stop_time: 05:00
