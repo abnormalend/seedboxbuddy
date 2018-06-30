@@ -4,21 +4,44 @@ import configparser
 import datetime
 import time
 import logging
+import sys
+import os
 from rutorrent import rutorrent
 
 def str2bool(v):
   return v.lower() in ("yes", "true", "t", "1")
 
+def runningInDocker():
+    with open('/proc/self/cgroup', 'r') as procfile:
+        for line in procfile:
+            fields = line.strip().split('/')
+            if fields[1] == 'docker':
+                return True
+    return False
+
 # Set up logging
-logger = logging.getLogger('seedBoxBuddy')
-logger.setLevel(logging.DEBUG)
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+def get_logger(name):
+    myLogger = logging.getLogger(name)
+    myLogger.setLevel(logging.DEBUG)
+    if not myLogger.handlers:
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(formatter)
+        myLogger.addHandler(handler)
+    return myLogger
+
+logger = get_logger('sbb')
+# Check if we're in a container
+if runningInDocker():
+    logger.info("Running inside Docker was detected")
+    foldersToCheck = ['/config', '/download']
+    for folder in foldersToCheck:
+        if not os.path.exists(folder):
+            logger.error("Please create a volume map for " + folder)
+            sys.exit(1)
+
+
 
 # Get our config settings
 config = configparser.ConfigParser()
@@ -65,7 +88,7 @@ def downloadTimeLeft():
 #   that here and load something besides rutorrent
 
 if config['settings']['serverType'].lower() == "rutorrent":
-    torrentManager = rutorrent(config)
+    torrentManager = rutorrent(config, logger)
 
 while True:
     if limit_hours:

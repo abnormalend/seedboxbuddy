@@ -7,7 +7,7 @@ RUN apk add --no-cache libffi-dev openssl-dev && \
     pip install -r /requirements.txt && \
     apk del .pynacl_deps
 
-COPY ./* /
-WORKDIR /
+COPY . /app
+WORKDIR /app
 
-CMD ["python", "sbb.py"]
+CMD ["python", "/app/sbb.py"]

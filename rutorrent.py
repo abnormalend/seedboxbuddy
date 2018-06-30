@@ -5,16 +5,16 @@ import time
 import os
 import json
 import shutil
+import paramiko
 from paramiko import SSHClient
 from scp import SCPClient
 
 class rutorrent:
     """Functions and things for managing an rutorrent server."""
 
-    def __init__(self, config):
-        logging.basicConfig()
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
+    def __init__(self, config, logger):
+
+        # self.logger = logging.getLogger("sbb."+__name__)
 
         self.myTorrents = {}
         self.server =config['settings']['myServer']
@@ -110,6 +110,7 @@ class rutorrent:
     def getFileWithSCP(self, file, recursive, label):
         ssh = SSHClient()
         ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(self.server, username=self.username, password=self.password)
         # Where are we putting this?  Make the folder if it doesn't already exist
 
