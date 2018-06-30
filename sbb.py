@@ -6,6 +6,7 @@ import time
 import logging
 import sys
 import os
+from shutil import copyfile
 from rutorrent import rutorrent
 
 def str2bool(v):
@@ -19,8 +20,24 @@ def runningInDocker():
                 return True
     return False
 
+def dockerPrepWork():
+    foldersToCheck = ['/config', '/download']
+    for folder in foldersToCheck:   # We need to make sure that the folders we need exist
+        if not os.path.exists(folder):
+            logger.error("Please create a volume map for " + folder)
+            sys.exit(1)
+    logger.debug("checking to see if settings file exists")
+    if not os.path.exists('/config/settings.ini'):  # If a settings file doesn't exist in the mapping copy our sample
+        if not os.path.exists('/config/settings.ini.sample'):
+            copyfile('/app/settings.ini.sample', '/config/settings.ini.sample')
+            logger.error("settings.ini.sample created in /config. Rename and add your settings")
+            sys.exit(1)
+        else:
+            logger.error("Please rename settings.ini.sample and add your settings")
+            sys.exit(1)
+
 # Set up logging
-def get_logger(name):
+def getLogger(name):
     myLogger = logging.getLogger(name)
     myLogger.setLevel(logging.DEBUG)
     if not myLogger.handlers:
@@ -31,24 +48,14 @@ def get_logger(name):
         myLogger.addHandler(handler)
     return myLogger
 
-logger = get_logger('sbb')
-# Check if we're in a container
-if runningInDocker():
-    logger.info("Running inside Docker was detected")
-    foldersToCheck = ['/config', '/download']
-    for folder in foldersToCheck:
-        if not os.path.exists(folder):
-            logger.error("Please create a volume map for " + folder)
-            sys.exit(1)
-
-
-
-# Get our config settings
-config = configparser.ConfigParser()
-config.read(['settings-defaults.ini', 'settings.ini'])
-limit_hours = str2bool(config['settings']['limit_hours'])
-start_time = config['settings']['start_time'].split(':')
-stop_time = config['settings']['stop_time'].split(':')
+# Import settings
+def getSettings():
+    myConfig = configparser.ConfigParser()
+    if docker:
+        myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
+    else:
+        myConfig.read(['settings-defaults.ini', 'settings.ini'])
+    return myConfig
 
 # A few functions to handle the time
 def checkDownloadTime():
@@ -84,6 +91,19 @@ def downloadTimeLeft():
         starting_time, stopping_time = handleOvernightDownloadTime(starting_time, stopping_time)
         return stopping_time - now
 
+
+logger = getLogger('sbb')
+# Check if we're in a container
+docker = runningInDocker()      #save this for future reference
+if docker:
+    logger.info("Running inside Docker was detected")
+    dockerPrepWork()
+
+# Get our config settings
+config = getSettings()
+limit_hours = str2bool(config['settings']['limit_hours'])
+start_time = config['settings']['start_time'].split(':')
+stop_time = config['settings']['stop_time'].split(':')
 # Now the main program loop.  If we have support for other servers we can add
 #   that here and load something besides rutorrent
 
