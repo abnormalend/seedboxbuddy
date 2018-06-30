@@ -15,6 +15,7 @@ class rutorrent:
     def __init__(self, config, logger):
 
         # self.logger = logging.getLogger("sbb."+__name__)
+        self.logger = logger
 
         self.myTorrents = {}
         self.server =config['settings']['myServer']
