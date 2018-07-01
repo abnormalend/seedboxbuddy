@@ -2,12 +2,12 @@ FROM python:2.7-alpine
 
 COPY requirements.txt /
 
-RUN apk add --no-cache libffi-dev openssl-dev && \
+RUN apk add --no-cache libffi-dev openssl-dev tzdata && \
     apk add --no-cache --wait 10 --virtual .pynacl_deps build-base python2-dev  && \
     pip install -r /requirements.txt && \
     apk del .pynacl_deps
 
-COPY . /app
-WORKDIR /app
+COPY ./* /
+WORKDIR /
 
-CMD ["python", "/app/sbb.py"]
+CMD ["python", "sbb.py"]
