@@ -41,7 +41,7 @@ When running inside docker, it will look for the settings.ini inside of /config 
 ```bash
 docker create \
     --name seedboxybuddy \
-    -e TZ=US/Detroit \
+    -e TZ=America/Detroit \
     -v $configDir:/config \
     -v $downloadDir:/download \
     abnormalend/seedboxbuddy
