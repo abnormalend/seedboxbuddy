@@ -104,6 +104,8 @@ config = getSettings()
 limit_hours = str2bool(config['settings']['limit_hours'])
 start_time = config['settings']['start_time'].split(':')
 stop_time = config['settings']['stop_time'].split(':')
+if config['settings']['localSavePath'][-1:] is not '/':
+    config['settings']['localSavePath'] = config['settings']['localSavePath'] + '/'
 # Now the main program loop.  If we have support for other servers we can add
 #   that here and load something besides rutorrent
 
