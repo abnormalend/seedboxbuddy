@@ -55,6 +55,9 @@ def getSettings():
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     else:
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
+    # Add trailing / if it's not there already
+    if '/' not in myConfig['settings']['localSavePath'][-1:]:
+        myConfig['settings']['localSavePath'] = myConfig['settings']['localSavePath'] + '/'
     return myConfig
 
 # A few functions to handle the time
