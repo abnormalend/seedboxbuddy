@@ -62,16 +62,16 @@ def getSettings():
 
 # A few functions to handle the time
 def checkDownloadTime():
-    logger.info("Checking if it's time to run downloads")
+    logger.debug("Checking if it's time to run downloads")
     now = datetime.datetime.now()
     starting_time = now.replace(hour=int(start_time[0]), minute=int(start_time[1]), second=0, microsecond=0)
     stopping_time = now.replace(hour=int(stop_time[0]), minute=int(stop_time[1]), second=0, microsecond=0)
     starting_time, stopping_time = handleOvernightDownloadTime(starting_time, stopping_time)
     if (now > starting_time) and (now < stopping_time):
-        logger.info("It is download time")
+        logger.debug("It is download time")
         return True
     else:
-        logger.info("Nope, not download time")
+        logger.debug("Nope, not download time")
         return False
 
 def handleOvernightDownloadTime(starting_time, stopping_time):
@@ -93,6 +93,17 @@ def downloadTimeLeft():
         stopping_time = now.replace(hour=int(stop_time[0]), minute=int(stop_time[1]), second=0, microsecond=0)
         starting_time, stopping_time = handleOvernightDownloadTime(starting_time, stopping_time)
         return stopping_time - now
+
+def howLongUntilDownloadTime():
+    if not checkDownloadTime():
+        now = datetime.datetime.now()
+        starting_time = now.replace(hour=int(start_time[0]), minute=int(start_time[1]), second=0, microsecond=0)
+        stopping_time = now.replace(hour=int(stop_time[0]), minute=int(stop_time[1]), second=0, microsecond=0)
+        if now > starting_time:
+            logger.debug("add 1 day to the starting time")
+            starting_time = starting_time + datetime.timedelta(days=1)
+        # starting_time, stopping_time = handleOvernightDownloadTime(starting_time, stopping_time)
+        return starting_time - now
 
 
 logger = getLogger('sbb')
@@ -120,7 +131,8 @@ while True:
             logger.info("Downloads done")
             logger.info(str(downloadTimeLeft()))
         else:
-            logger.debug("It's not time, so we're going to wait")
+            timeUntilDownload = howLongUntilDownloadTime()
+            logger.info("It is not time to download, so we are going to wait a while.  We need to wait " + str(timeUntilDownload))
     else:
         torrentManager.downloadTorrentsByPattern()
-    time.sleep(60)  #We're going to wait for one minute before starting over
+    time.sleep(timeUntilDownload.total_seconds())  #We're going to wait until download time
