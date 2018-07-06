@@ -128,8 +128,9 @@ while True:
     if limit_hours:
         if checkDownloadTime():
             torrentManager.downloadTorrentsByPattern()
-            logger.info("Downloads done")
-            logger.info(str(downloadTimeLeft()))
+            # We want to keep checking for more downloads while we are in the window
+            timeUntilDownload = datetime.timedelta(minutes=5)
+            logger.info("Downloads done.  We have " + str(downloadTimeLeft()) + " time left in the download window.  Will check again in " + str(timeUntilDownload))
         else:
             timeUntilDownload = howLongUntilDownloadTime()
             logger.info("It is not time to download, so we are going to wait a while.  We need to wait " + str(timeUntilDownload))
