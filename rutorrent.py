@@ -188,6 +188,7 @@ class rutorrent:
 
     def downloadTorrentsByPattern(self):
         self.grabTorrents()
+        didDownloadsHappen = False
         while self.myTorrents:
             nextTorrent = self.getTorrentByPattern()
             self.logger.info("Download Queue Size: " + str(len(self.myTorrents)))
@@ -195,6 +196,7 @@ class rutorrent:
             downloadSize = self.myTorrents[nextTorrent]['size']
             preDownloadTime = time.time()
             self.downloadAndLabelByHash(nextTorrent)
+            didDownloadsHappen = True
             postDownloadTime = time.time()
             downloadTime = postDownloadTime - preDownloadTime
             self.logger.info("Download took " + str(downloadTime) + " seconds")
@@ -202,4 +204,5 @@ class rutorrent:
             self.logger.info("Delay for 5 seconds to give labels a chance to be applied.")
             time.sleep(5)
             self.grabTorrents()
-        self.logger.info("Finished with all Downloads!")
+        self.logger.debug("Finished with all Downloads!")
+        return didDownloadsHappen

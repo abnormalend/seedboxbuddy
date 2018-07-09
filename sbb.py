@@ -127,13 +127,14 @@ if config['settings']['serverType'].lower() == "rutorrent":
 while True:
     if limit_hours:
         if checkDownloadTime():
-            torrentManager.downloadTorrentsByPattern()
-            # We want to keep checking for more downloads while we are in the window
             timeUntilDownload = datetime.timedelta(minutes=5)
-            logger.info("Downloads done.  We have " + str(downloadTimeLeft()) + " time left in the download window.  Will check again in " + str(timeUntilDownload))
+            if torrentManager.downloadTorrentsByPattern():
+                # We want to keep checking for more downloads while we are in the window, but only log the message if downloads happened
+                logger.info("Downloads done.  We have " + str(downloadTimeLeft()) + " time left in the download window.  Will check again every " + str(timeUntilDownload))
         else:
             timeUntilDownload = howLongUntilDownloadTime()
             logger.info("It is not time to download, so we are going to wait a while.  We need to wait " + str(timeUntilDownload))
     else:
         torrentManager.downloadTorrentsByPattern()
+        timeUntilDownload = datetime.timedelta(minutes=5)
     time.sleep(timeUntilDownload.total_seconds())  #We're going to wait until download time
