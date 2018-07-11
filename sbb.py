@@ -9,6 +9,8 @@ import os
 from shutil import copyfile
 from rutorrent import rutorrent
 
+__version__ = "1.0.0"
+
 def str2bool(v):
   return v.lower() in ("yes", "true", "t", "1")
 
@@ -58,6 +60,9 @@ def getSettings():
     # Add trailing / if it's not there already
     if '/' not in myConfig['settings']['localSavePath'][-1:]:
         myConfig['settings']['localSavePath'] = myConfig['settings']['localSavePath'] + '/'
+    logger.info("Starting with the following settings:")
+    for key in myConfig['settings']:
+        logger.info(key + ": " + myConfig['settings'][key])
     return myConfig
 
 # A few functions to handle the time
@@ -113,6 +118,7 @@ if docker:
     logger.info("Running inside Docker was detected")
     dockerPrepWork()
 
+logger.info("Version: " + __version__)
 # Get our config settings
 config = getSettings()
 limit_hours = str2bool(config['settings']['limit_hours'])
