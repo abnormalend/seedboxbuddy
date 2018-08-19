@@ -11,6 +11,7 @@ from scp import SCPClient
 
 class rutorrent:
     """Functions and things for managing an rutorrent server."""
+    __version__ = "1.0.0"
 
     def __init__(self, config, logger):
 
@@ -27,20 +28,27 @@ class rutorrent:
         self.pattern = config['settings']['downloadPattern']
         self.localSavePath = config['settings']['localSavePath']
         self.duplicate_action = config['settings']['duplicate_action'].lower()
+        # self.autolabel = dict(config['autolabel'])
         self.grabTorrents()
+
+    def getVersion(self):
+        return self.__version__
 
     def grabTorrents(self):
         url = "http://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
         payload = {'mode': 'list'}
         headers = {'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache",}
-        try:
-            response = requests.request("POST", url, data=payload, headers=headers, auth=(self.username,self.password))
-            json_data = response.json()
-        except Exception as e:
-            self.logger.error("something has gone wrong")
-            self.logger.error(e)
+        for attempt in range(10):
+            try:
+                response = requests.request("POST", url, data=payload, headers=headers, auth=(self.username,self.password))
+                json_data = response.json()
+            except Exception as e:
+                self.logger.error("something has gone wrong, unable to download torrent lists")
+                self.logger.error(e)
+            else:
+                break
         i = 0
-        for item in json_data["t"].items():
+        for item in list(json_data["t"].items()):
             if item[1][14] not in self.ignoreLabels and int(item[1][5]) < self.maxSize and int(item[1][19]) is 0:
                 myName = item[1][4]
                 myLabel = item[1][14]
@@ -59,8 +67,8 @@ class rutorrent:
 
     def getAllTorrents(self):
         self.logger.info("Printing all torrent details")
-        print self.myTorrents
-        for hash, item in self.myTorrents.items():
+        print(self.myTorrents)
+        for hash, item in list(self.myTorrents.items()):
             self.logger.info(hash)
             self.logger.info("name: " + item['name'])
             self.logger.info("label: " + item['label'])
@@ -75,13 +83,13 @@ class rutorrent:
         myComparitor = 0
         pattern = self.pattern.lower()
         if 'newest' in pattern:
-            for hash, item in self.myTorrents.items():
+            for hash, item in list(self.myTorrents.items()):
                 if myComparitor > item['created'] or myHash == "":
                     myComparitor = item['created']
                     myHash = hash
             return myHash
         elif 'oldest' in pattern:
-            for hash, item in self.myTorrents.items():
+            for hash, item in list(self.myTorrents.items()):
                 self.logger.debug(item['size'])
                 if myComparitor < item['created'] or myHash == "":
                     self.logger.debug(item['name'])
@@ -89,7 +97,7 @@ class rutorrent:
                     myHash = hash
             return myHash
         elif 'smallest' in pattern:
-            for hash, item in self.myTorrents.items():
+            for hash, item in list(self.myTorrents.items()):
                 self.logger.debug(item['size'])
                 if myComparitor > item['size'] or myHash == "":
                     self.logger.debug(item['name'])
@@ -97,7 +105,7 @@ class rutorrent:
                     myHash = hash
             return myHash
         elif 'largest' in pattern:
-            for hash, item in self.myTorrents.items():
+            for hash, item in list(self.myTorrents.items()):
                 self.logger.debug(item['size'])
                 if myComparitor < item['size'] or myHash == "":
                     self.logger.debug(item['name'])
@@ -124,9 +132,13 @@ class rutorrent:
                     raise
         # SCPCLient takes a paramiko transport as an argument
         scp = SCPClient(ssh.get_transport())
-        # try:
-        scp.get(file, downloadLocation, recursive=recursive)
-        return True
+        try:
+            scp.get(file, downloadLocation, recursive=recursive)
+            return True
+        except PipeTimeout as e:
+            self.logger.error("download error: " + str(e))
+            return False
+
 
     def downloadAndLabelByHash(self, hash):
         self.setLabel(hash,'downloading')
@@ -154,13 +166,13 @@ class rutorrent:
         if self.myTorrents[hash]['multi_file']:
             try:
                 shutil.rmtree(downloadLocation)
-            except OSError, e:
-                print ("Error: %s - %s." % (e.filename, e.strerror))
+            except OSError as e:
+                print(("Error: %s - %s." % (e.filename, e.strerror)))
         else:
             if os.path.isfile(downloadLocation):
                 os.remove(downloadLocation)
             else:    ## Show an error ##
-                print("Error: %s file not found" % downloadLocation)
+                print(("Error: %s file not found" % downloadLocation))
 
 
     def checkIfAlreadyDownloaded(self, hash):

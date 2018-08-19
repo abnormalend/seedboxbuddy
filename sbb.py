@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
-import configparser
+from configparser import SafeConfigParser
 import datetime
 import time
 import logging
@@ -52,13 +52,13 @@ def getLogger(name):
 
 # Import settings
 def getSettings():
-    myConfig = configparser.ConfigParser()
+    myConfig = SafeConfigParser()
     if docker:
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     else:
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
     # Add trailing / if it's not there already
-    if '/' not in myConfig['settings']['localSavePath'][-1:]:
+    if '/' not in myConfig.get('settings','localSavePath')[-1:]:
         myConfig['settings']['localSavePath'] = myConfig['settings']['localSavePath'] + '/'
     logger.info("Starting with the following settings:")
     for key in myConfig['settings']:
@@ -129,6 +129,12 @@ stop_time = config['settings']['stop_time'].split(':')
 
 if config['settings']['serverType'].lower() == "rutorrent":
     torrentManager = rutorrent(config, logger)
+    logger.info("rutorrent class version: " + torrentManager.getVersion())
+
+# if config['settings']['autolabel_enabled'] == 'True':
+#     for name, value in config.items('autolabel'):
+#         print('  %s = %s' % (name, value))
+#     # torrentManager.autoLabelTorrents()
 
 while True:
     if limit_hours:
