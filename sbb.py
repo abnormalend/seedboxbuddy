@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from configparser import SafeConfigParser
+import configparser
 import datetime
 import time
 import logging
@@ -8,6 +8,7 @@ import sys
 import os
 from shutil import copyfile
 from rutorrent import rutorrent
+# from pushover import Client
 
 __version__ = "1.0.0"
 
@@ -52,13 +53,13 @@ def getLogger(name):
 
 # Import settings
 def getSettings():
-    myConfig = SafeConfigParser()
+    myConfig = configparser.SafeConfigParser()
     if docker:
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     else:
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
     # Add trailing / if it's not there already
-    if '/' not in myConfig.get('settings','localSavePath')[-1:]:
+    if '/' not in myConfig['settings']['localSavePath'][-1:]:
         myConfig['settings']['localSavePath'] = myConfig['settings']['localSavePath'] + '/'
     logger.info("Starting with the following settings:")
     for key in myConfig['settings']:
@@ -129,24 +130,34 @@ stop_time = config['settings']['stop_time'].split(':')
 
 if config['settings']['serverType'].lower() == "rutorrent":
     torrentManager = rutorrent(config, logger)
-    logger.info("rutorrent class version: " + torrentManager.getVersion())
 
-# if config['settings']['autolabel_enabled'] == 'True':
-#     for name, value in config.items('autolabel'):
-#         print('  %s = %s' % (name, value))
-#     # torrentManager.autoLabelTorrents()
+# Setup pushover
+# if config['settings']['pushover_user_key'] is not 'disabled':
+#     pushover = Client(config['settings']['pushover_user_key'], api_token=config['settings']['pushover_api_token'])
+# else:
+#     pushover = False
+#
 
 while True:
     if limit_hours:
         if checkDownloadTime():
             timeUntilDownload = datetime.timedelta(minutes=5)
-            if torrentManager.downloadTorrentsByPattern():
+            downloadReport = torrentManager.downloadTorrentsByPattern()
+            logger.info("foo" + downloadReport)
+            if downloadReport:
                 # We want to keep checking for more downloads while we are in the window, but only log the message if downloads happened
+                # if pushover:
+                #     logger.info("sending report via pushover: "+ downloadReport)
+                #     pushover.send_message(downloadReport, title="Downloads completed", priority=-1, timestamp=True)
                 logger.info("Downloads done.  We have " + str(downloadTimeLeft()) + " time left in the download window.  Will check again every " + str(timeUntilDownload))
         else:
             timeUntilDownload = howLongUntilDownloadTime()
             logger.info("It is not time to download, so we are going to wait a while.  We need to wait " + str(timeUntilDownload))
     else:
-        torrentManager.downloadTorrentsByPattern()
+        downloadReport = torrentManager.downloadTorrentsByPattern()
+        # Coming soon with pushover support
+        # if downloadReport and pushover:
+        #     logger.info("sending report via pushover: "+ str(downloadReport))
+        #     pushover.send_message(downloadReport, title="Downloads completed", priority=-1, timestamp=True)
         timeUntilDownload = datetime.timedelta(minutes=5)
     time.sleep(timeUntilDownload.total_seconds())  #We're going to wait until download time

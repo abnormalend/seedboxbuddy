@@ -28,8 +28,10 @@ class rutorrent:
         self.pattern = config['settings']['downloadPattern']
         self.localSavePath = config['settings']['localSavePath']
         self.duplicate_action = config['settings']['duplicate_action'].lower()
+        self.grabtorrent_retry_count = int(config['settings']['grabtorrent_retry_count'])
+        self.grabtorrent_retry_delay = int(config['settings']['grabtorrent_retry_delay'])
         # self.autolabel = dict(config['autolabel'])
-        self.grabTorrents()
+        # self.grabTorrents()
 
     def getVersion(self):
         return self.__version__
@@ -38,32 +40,41 @@ class rutorrent:
         url = "http://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
         payload = {'mode': 'list'}
         headers = {'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache",}
-        for attempt in range(10):
+        json_data = None
+        for attempt in range(self.grabtorrent_retry_count):
             try:
+                self.logger.debug("Try #" + str(attempt))
                 response = requests.request("POST", url, data=payload, headers=headers, auth=(self.username,self.password))
                 json_data = response.json()
             except Exception as e:
-                self.logger.error("something has gone wrong, unable to download torrent lists")
-                self.logger.error(e)
+                self.logger.error("something has gone wrong, unable to download torrent lists.  Will retry in " + str(self.grabtorrent_retry_delay) + " seconds.")
+                # self.logger.error(e)
+                time.sleep(self.grabtorrent_retry_delay)
             else:
                 break
         i = 0
-        for item in list(json_data["t"].items()):
-            if item[1][14] not in self.ignoreLabels and int(item[1][5]) < self.maxSize and int(item[1][19]) is 0:
-                myName = item[1][4]
-                myLabel = item[1][14]
-                mySize = int(item[1][5])
-                myFilePath =  item[1][25]
-                myCreated = item[1][26]
-                myMultiFile =  bool(int(item[1][33]))
-                self.myTorrents[item[0]] = {
-                    'name': myName,
-                    'label': myLabel,
-                    'size': mySize,
-                    'file_path': myFilePath,
-                    'multi_file': myMultiFile,
-                    'created': myCreated
-                    }
+        if json_data:
+            for item in list(json_data["t"].items()):
+                if item[1][14] not in self.ignoreLabels and int(item[1][5]) < self.maxSize and int(item[1][19]) is 0:
+                    myName = item[1][4]
+                    myLabel = item[1][14]
+                    mySize = int(item[1][5])
+                    myFilePath =  item[1][25]
+                    myCreated = item[1][26]
+                    myMultiFile =  bool(int(item[1][33]))
+                    self.myTorrents[item[0]] = {
+                        'name': myName,
+                        'label': myLabel,
+                        'size': mySize,
+                        'file_path': myFilePath,
+                        'multi_file': myMultiFile,
+                        'created': myCreated
+                        }
+            self.logger.info("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
+            return True
+        else:
+            self.logger.error("unable to download")
+            return False
 
     def getAllTorrents(self):
         self.logger.info("Printing all torrent details")
