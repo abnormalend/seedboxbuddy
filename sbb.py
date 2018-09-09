@@ -53,7 +53,7 @@ def getLogger(name):
 
 # Import settings
 def getSettings():
-    myConfig = configparser.SafeConfigParser()
+    myConfig = configparser.ConfigParser()
     if docker:
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     else:
@@ -143,7 +143,7 @@ while True:
         if checkDownloadTime():
             timeUntilDownload = datetime.timedelta(minutes=5)
             downloadReport = torrentManager.downloadTorrentsByPattern()
-            logger.info("foo" + downloadReport)
+            # logger.info("foo" + downloadReport)
             if downloadReport:
                 # We want to keep checking for more downloads while we are in the window, but only log the message if downloads happened
                 # if pushover:
