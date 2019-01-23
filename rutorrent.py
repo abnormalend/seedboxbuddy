@@ -24,7 +24,8 @@ class rutorrent:
         self.username = config['settings']['myUsername']
         self.password = config['settings']['myPassword']
         self.ignoreLabels = config['settings']['ignoreLabels'].split(',')
-        self.maxSize = int(config['settings']['maxSize'])
+        self.maxSize = self.parseSize(config['settings']['maxSize'])
+        self.logger.info(self.maxSize)
         self.pattern = config['settings']['downloadPattern']
         self.localSavePath = config['settings']['localSavePath']
         self.duplicate_action = config['settings']['duplicate_action'].lower()
@@ -32,6 +33,16 @@ class rutorrent:
         self.grabtorrent_retry_delay = int(config['settings']['grabtorrent_retry_delay'])
         # self.autolabel = dict(config['autolabel'])
         # self.grabTorrents()
+
+    # Parse the filesize
+    def parseSize(self, size):
+        units = {"B": 1, "KB": 10**3, "MB": 10**6, "GB": 10**9, "TB": 10**12}
+        self.logger.debug(size)
+        if len(size.split()) > 1:
+            number, unit = [string.strip() for string in size.split()]
+            return int(float(number)*units[unit])
+        else:
+            return int(size)
 
     def getVersion(self):
         return self.__version__

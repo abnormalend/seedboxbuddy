@@ -59,6 +59,9 @@ def getSettings():
     else:
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
     # Add trailing / if it's not there already
+    if "settings" not in myConfig:
+        logger.error("Settings file not found.")
+        exit()
     if '/' not in myConfig['settings']['localSavePath'][-1:]:
         myConfig['settings']['localSavePath'] = myConfig['settings']['localSavePath'] + '/'
     logger.info("Starting with the following settings:")
