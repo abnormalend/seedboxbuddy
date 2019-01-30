@@ -11,7 +11,7 @@ from scp import SCPClient
 
 class rutorrent:
     """Functions and things for managing an rutorrent server."""
-    __version__ = "1.0.0"
+    __version__ = "1.0.1"
 
     def __init__(self, config, logger):
 
@@ -157,7 +157,7 @@ class rutorrent:
         try:
             scp.get(file, downloadLocation, recursive=recursive)
             return True
-        except PipeTimeout as e:
+        except scp.SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
 
