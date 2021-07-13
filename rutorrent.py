@@ -203,7 +203,9 @@ class rutorrent:
         os.makedirs(os.path.dirname(path), mode = 0o777, exist_ok = True)
 
     def getFromS3toLocal(self):
-        s3 = boto3.resource('s3')
+        s3 = boto3.resource('s3',
+                        aws_access_key_id=self.s3_key,
+                        aws_secret_access_key=self.s3_secret)
         bucket = s3.Bucket(self.s3_bucket)
         bucket_files = [x.key for x in bucket.objects.all()]
         for s3_file in bucket_files:
@@ -215,7 +217,9 @@ class rutorrent:
 
     def deleteS3files(self):
         """This will delete all files in the S3 bucket, so don't run this on just any bucket."""
-        s3 = boto3.resource('s3')
+        s3 = boto3.resource('s3',
+                        aws_access_key_id=self.s3_key,
+                        aws_secret_access_key=self.s3_secret)
         bucket = s3.Bucket(self.s3_bucket)
         bucket_files = [x.key for x in bucket.objects.all()]
         delete_objects = []
