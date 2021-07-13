@@ -190,8 +190,16 @@ class rutorrent:
                 stdin, stdout, stderr = self.ssh.exec_command(self.s3_aws_cli_loc + ' s3 cp --recursive "' + 
                                                                 file + '/" s3://' + self.s3_bucket + '/"' + label + '"/"' + 
                                                                 file.replace(self.myTorrentFilePath, '') + '"/')
+            if stdout:
+                self.logger.debug("STDOUT:")
+                for line in stdout.readlines():
+                    self.logger.debug(line)
+            if stderr:
+                self.logger.debug("STDERR:")
+                for line in stderr.readlines():
+                    self.logger.debug(line)
             return True
-        except self.ssh.SSHException as e:
+        except paramiko.SSHException as e:
             self.logger.error(e)
             self.logger.error("stdin: " + stdin.readlines())
             self.logger.error("stdout: " + stdout.readlines())
