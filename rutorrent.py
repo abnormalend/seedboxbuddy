@@ -7,6 +7,7 @@ import json
 import shutil
 import paramiko
 import boto3
+import botocore
 import errno
 from paramiko import SSHClient
 from scp import SCPClient
@@ -175,7 +176,7 @@ class rutorrent:
         try:
             scp_client.get(file, downloadLocation, recursive=recursive)
             return True
-        except SCPException as e:
+        except paramiko.SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
 
@@ -218,7 +219,7 @@ class rutorrent:
         bucket = s3.Bucket(self.s3_bucket)
         bucket_files = [x.key for x in bucket.objects.all()]
         for s3_file in bucket_files:
-            self.logger.debug(s3_file)
+            self.logger.debug("Downloading from S3: " + s3_file)
             local_path = self.localSavePath + s3_file
             self.createPathLocally(local_path)
             bucket.download_file(s3_file, local_path)
@@ -235,7 +236,12 @@ class rutorrent:
         if bucket_files:
             for s3_file in bucket_files:
                 delete_objects.append({'Key': s3_file})
-            response = bucket.delete_objects(Delete={ 'Objects': delete_objects}    )
+            try:
+                response = bucket.delete_objects(Delete={ 'Objects': delete_objects}    )
+            except botocore.exceptions.ClientError as e:
+                self.logger.error(e)
+                self.logger.error(delete_objects)
+                return False
 
     def downloadAndLabelByHash(self, hash):
         self.setLabel(hash,'downloading')
