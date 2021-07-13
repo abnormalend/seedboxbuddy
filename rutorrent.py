@@ -175,7 +175,7 @@ class rutorrent:
         try:
             scp_client.get(file, downloadLocation, recursive=recursive)
             return True
-        except scp_client.SCPException as e:
+        except SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
 
