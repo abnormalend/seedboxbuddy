@@ -36,8 +36,8 @@ class rutorrent:
         self.s3_enabled = bool(config['settings']['s3_enabled'])
         self.s3_bucket = config['settings']['s3_bucket']
         self.s3_aws_cli_loc = config['settings']['s3_aws_cli_loc']
-        self.s3_key: config['settings']['s3_key']
-        self.s3_secret:config['settings']['s3_secret']
+        self.s3_key = config['settings']['s3_key']
+        self.s3_secret = config['settings']['s3_secret']
         # self.autolabel = dict(config['autolabel'])
         # self.grabTorrents()
         self.ssh = None
