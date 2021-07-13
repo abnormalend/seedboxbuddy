@@ -27,16 +27,16 @@ def dockerPrepWork():
     foldersToCheck = ['/config', '/download']
     for folder in foldersToCheck:   # We need to make sure that the folders we need exist
         if not os.path.exists(folder):
-            logger.error("Please create a volume map for " + folder)
+            print("ERROR: Please create a volume map for " + folder)
             sys.exit(1)
     logger.debug("checking to see if settings file exists")
     if not os.path.exists('/config/settings.ini'):  # If a settings file doesn't exist in the mapping copy our sample
         if not os.path.exists('/config/settings.ini.sample'):
             copyfile('/app/settings.ini.sample', '/config/settings.ini.sample')
-            logger.error("settings.ini.sample created in /config. Rename and add your settings")
+            print("ERROR: settings.ini.sample created in /config. Rename and add your settings")
             sys.exit(1)
         else:
-            logger.error("Please rename settings.ini.sample and add your settings")
+            print("ERROR: Please rename settings.ini.sample and add your settings")
             sys.exit(1)
 
 # Set up logging
