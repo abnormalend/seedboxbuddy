@@ -1,3 +1,5 @@
 settings*.ini
 !settings-defaults.ini
 *.pyc
+download
+.vscode
