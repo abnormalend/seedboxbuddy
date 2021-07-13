@@ -29,7 +29,6 @@ def dockerPrepWork():
         if not os.path.exists(folder):
             print("ERROR: Please create a volume map for " + folder)
             sys.exit(1)
-    logger.debug("checking to see if settings file exists")
     if not os.path.exists('/config/settings.ini'):  # If a settings file doesn't exist in the mapping copy our sample
         if not os.path.exists('/config/settings.ini.sample'):
             copyfile('/app/settings.ini.sample', '/config/settings.ini.sample')
