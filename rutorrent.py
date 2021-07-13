@@ -7,6 +7,7 @@ import json
 import shutil
 import paramiko
 import boto3
+import errno
 from paramiko import SSHClient
 from scp import SCPClient
 
@@ -33,7 +34,7 @@ class rutorrent:
         self.duplicate_action = config['settings']['duplicate_action'].lower()
         self.grabtorrent_retry_count = int(config['settings']['grabtorrent_retry_count'])
         self.grabtorrent_retry_delay = int(config['settings']['grabtorrent_retry_delay'])
-        self.s3_enabled = bool(config['settings']['s3_enabled'])
+        self.s3_enabled = config['settings'].getboolean('s3_enabled')
         self.s3_bucket = config['settings']['s3_bucket']
         self.s3_aws_cli_loc = config['settings']['s3_aws_cli_loc']
         self.s3_key = config['settings']['s3_key']
@@ -156,10 +157,10 @@ class rutorrent:
             return False  #Something went wrong
 
     def getFileWithSCP(self, file, recursive, label):
-        ssh = SSHClient()
-        ssh.load_system_host_keys()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.server, username=self.username, password=self.password)
+        # ssh = SSHClient()
+        # ssh.load_system_host_keys()
+        # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # ssh.connect(self.server, username=self.username, password=self.password)
         # Where are we putting this?  Make the folder if it doesn't already exist
 
         downloadLocation = self.localSavePath + label + "/"
@@ -170,11 +171,11 @@ class rutorrent:
                 if e.errno != errno.EEXIST:
                     raise
         # SCPCLient takes a paramiko transport as an argument
-        scp = SCPClient(ssh.get_transport())
+        scp_client  = SCPClient(self.ssh.get_transport())
         try:
-            scp.get(file, downloadLocation, recursive=recursive)
+            scp_client.get(file, downloadLocation, recursive=recursive)
             return True
-        except scp.SCPException as e:
+        except scp_client.SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
 
