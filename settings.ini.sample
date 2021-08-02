@@ -41,3 +41,9 @@ start_time: 01:00
 # Note: A new download will not be started if the estimated finish time is
 # later than the stop time.
 stop_time: 05:00
+
+# New S3 Download section
+s3_enabled: True
+s3_bucket: my_bucket_name
+s3_key: mykeygoeshere
+s3_secret: mysecretgoeshere

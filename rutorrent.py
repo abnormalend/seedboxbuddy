@@ -6,6 +6,9 @@ import os
 import json
 import shutil
 import paramiko
+import boto3
+import botocore
+import errno
 from paramiko import SSHClient
 from scp import SCPClient
 
@@ -21,6 +24,7 @@ class rutorrent:
         self.myTorrents = {}
         self.server =config['settings']['myServer']
         self.ruTorrentPath = config['settings']['myTorrentPath']
+        self.myTorrentFilePath = config['settings']['myTorrentFilePath']
         self.username = config['settings']['myUsername']
         self.password = config['settings']['myPassword']
         self.ignoreLabels = config['settings']['ignoreLabels'].split(',')
@@ -31,8 +35,14 @@ class rutorrent:
         self.duplicate_action = config['settings']['duplicate_action'].lower()
         self.grabtorrent_retry_count = int(config['settings']['grabtorrent_retry_count'])
         self.grabtorrent_retry_delay = int(config['settings']['grabtorrent_retry_delay'])
+        self.s3_enabled = config['settings'].getboolean('s3_enabled')
+        self.s3_bucket = config['settings']['s3_bucket']
+        self.s3_aws_cli_loc = config['settings']['s3_aws_cli_loc']
+        self.s3_key = config['settings']['s3_key']
+        self.s3_secret = config['settings']['s3_secret']
         # self.autolabel = dict(config['autolabel'])
         # self.grabTorrents()
+        self.ssh = None
 
     # Parse the filesize
     def parseSize(self, size):
@@ -46,6 +56,15 @@ class rutorrent:
 
     def getVersion(self):
         return self.__version__
+
+    def initSSH(self):
+        self.ssh = SSHClient()
+        self.ssh.load_system_host_keys()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh.connect(self.server, username=self.username, password=self.password)
+
+    def takedownSSH(self):
+        self.ssh.close()
 
     def grabTorrents(self):
         url = "http://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
@@ -66,7 +85,7 @@ class rutorrent:
         i = 0
         if json_data:
             for item in list(json_data["t"].items()):
-                if item[1][14] not in self.ignoreLabels and int(item[1][5]) < self.maxSize and int(item[1][19]) is 0:
+                if item[1][14] not in self.ignoreLabels and int(item[1][5]) < self.maxSize and int(item[1][19]) == 0:
                     myName = item[1][4]
                     myLabel = item[1][14]
                     mySize = int(item[1][5])
@@ -139,10 +158,10 @@ class rutorrent:
             return False  #Something went wrong
 
     def getFileWithSCP(self, file, recursive, label):
-        ssh = SSHClient()
-        ssh.load_system_host_keys()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.server, username=self.username, password=self.password)
+        # ssh = SSHClient()
+        # ssh.load_system_host_keys()
+        # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # ssh.connect(self.server, username=self.username, password=self.password)
         # Where are we putting this?  Make the folder if it doesn't already exist
 
         downloadLocation = self.localSavePath + label + "/"
@@ -153,14 +172,76 @@ class rutorrent:
                 if e.errno != errno.EEXIST:
                     raise
         # SCPCLient takes a paramiko transport as an argument
-        scp = SCPClient(ssh.get_transport())
+        scp_client  = SCPClient(self.ssh.get_transport())
         try:
-            scp.get(file, downloadLocation, recursive=recursive)
+            scp_client.get(file, downloadLocation, recursive=recursive)
             return True
-        except scp.SCPException as e:
+        except paramiko.SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
 
+    def getFileWithS3(self, file, recursive, label):
+        stdin = None
+        stdout = None
+        stderr = None
+        try:
+            if not recursive:
+                stdin, stdout, stderr = self.ssh.exec_command(self.s3_aws_cli_loc + ' s3 cp "' + file + '" s3://' + self.s3_bucket + "/" + label + "/")
+            else:
+                stdin, stdout, stderr = self.ssh.exec_command(self.s3_aws_cli_loc + ' s3 cp --recursive "' + 
+                                                                file + '/" s3://' + self.s3_bucket + '/"' + label + '"/"' + 
+                                                                file.replace(self.myTorrentFilePath, '') + '"/')
+            if stdout:
+                self.logger.debug("STDOUT:")
+                for line in stdout.readlines():
+                    self.logger.debug(line)
+            if stderr:
+                self.logger.debug("STDERR:")
+                for line in stderr.readlines():
+                    self.logger.debug(line)
+            return True
+        except paramiko.SSHException as e:
+            self.logger.error(e)
+            self.logger.error("stdin: " + stdin.readlines())
+            self.logger.error("stdout: " + stdout.readlines())
+            self.logger.error("stderr: " + stderr.readlines())
+            return False
+
+
+    def createPathLocally(self, path):
+        """S3 download will not create subdirectories, so we need to ensure they are created."""
+        os.makedirs(os.path.dirname(path), mode = 0o777, exist_ok = True)
+
+    def getFromS3toLocal(self):
+        s3 = boto3.resource('s3',
+                        aws_access_key_id=self.s3_key,
+                        aws_secret_access_key=self.s3_secret)
+        bucket = s3.Bucket(self.s3_bucket)
+        bucket_files = [x.key for x in bucket.objects.all()]
+        for s3_file in bucket_files:
+            self.logger.debug("Downloading from S3: " + s3_file)
+            local_path = self.localSavePath + s3_file
+            self.createPathLocally(local_path)
+            bucket.download_file(s3_file, local_path)
+
+
+    def deleteS3files(self):
+        """This will delete all files in the S3 bucket, so don't run this on just any bucket."""
+        s3 = boto3.resource('s3',
+                        aws_access_key_id=self.s3_key,
+                        aws_secret_access_key=self.s3_secret)
+        bucket = s3.Bucket(self.s3_bucket)
+        bucket_files = [x.key for x in bucket.objects.all()]
+        delete_objects = []
+        if bucket_files:
+            for s3_file in bucket_files:
+                delete_objects.append({'Key': s3_file})
+            try:
+                response = bucket.delete_objects(Delete={ 'Objects': delete_objects}    )
+            except botocore.exceptions.ClientError as e:
+                self.logger.error(e)
+                self.logger.error(delete_objects)
+                return False
 
     def downloadAndLabelByHash(self, hash):
         self.setLabel(hash,'downloading')
@@ -178,10 +259,16 @@ class rutorrent:
                     del self.myTorrents[hash]
                     return True
         else:
-            if self.getFileWithSCP(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label']):
-                self.setLabel(hash,'downloaded')
-                del self.myTorrents[hash]
-                return True
+            if self.s3_enabled:
+                if self.getFileWithS3(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label']):
+                    self.setLabel(hash,'downloaded')
+                    del self.myTorrents[hash]
+                    return True
+            else:
+                if self.getFileWithSCP(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label']):
+                    self.setLabel(hash,'downloaded')
+                    del self.myTorrents[hash]
+                    return True
 
     def deleteLocalDownload(self, hash):
         downloadLocation = self.localSavePath + self.myTorrents[hash]['label'] + "/" + self.myTorrents[hash]['file_path'].rsplit('/', 1)[-1]
@@ -199,7 +286,7 @@ class rutorrent:
 
     def checkIfAlreadyDownloaded(self, hash):
         downloadLocation = self.localSavePath + self.myTorrents[hash]['label'] + "/" + self.myTorrents[hash]['file_path'].rsplit('/', 1)[-1]
-        self.logger.info(downloadLocation)
+        self.logger.debug(downloadLocation)
         if os.path.exists(downloadLocation):
             self.logger.info("Uh oh, "+ self.myTorrents[hash]['label'] + "already exists!")
             # if os.path.getsize(downloadLocation) < self.myTorrents[hash]['size']):
@@ -223,20 +310,30 @@ class rutorrent:
     def downloadTorrentsByPattern(self):
         self.grabTorrents()
         didDownloadsHappen = False
-        while self.myTorrents:
-            nextTorrent = self.getTorrentByPattern()
-            self.logger.info("Download Queue Size: " + str(len(self.myTorrents)))
-            self.logger.info("Downloading " + self.myTorrents[nextTorrent]['name'] + "  size: " + "{:,}".format(self.myTorrents[nextTorrent]['size']))
-            downloadSize = self.myTorrents[nextTorrent]['size']
-            preDownloadTime = time.time()
-            self.downloadAndLabelByHash(nextTorrent)
-            didDownloadsHappen = True
-            postDownloadTime = time.time()
-            downloadTime = postDownloadTime - preDownloadTime
-            self.logger.info("Download took " + str(downloadTime) + " seconds")
-            self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024)) + " kilobytes/second")
-            self.logger.info("Delay for 5 seconds to give labels a chance to be applied.")
-            time.sleep(5)
-            self.grabTorrents()
-        self.logger.debug("Finished with all Downloads!")
+        if self.myTorrents:
+            self.initSSH()
+            while self.myTorrents:
+                nextTorrent = self.getTorrentByPattern()
+                self.logger.info("Download Queue Size: " + str(len(self.myTorrents)))
+                self.logger.info("Downloading " + self.myTorrents[nextTorrent]['name'] + "  size: " + "{:,}".format(self.myTorrents[nextTorrent]['size']))
+                downloadSize = self.myTorrents[nextTorrent]['size']
+                preDownloadTime = time.time()
+                self.downloadAndLabelByHash(nextTorrent)
+                didDownloadsHappen = True
+                postDownloadTime = time.time()
+                downloadTime = postDownloadTime - preDownloadTime
+                self.logger.info("Download took " + str(round(downloadTime)) + " seconds")
+                if (downloadSize/downloadTime)/1024 > 1000:
+                    self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024/1024)) + " megabytes/second")
+                else:
+                    self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024)) + " kilobytes/second")
+                self.logger.info("Delay for 5 seconds to give labels a chance to be applied.")
+                time.sleep(5)
+                self.grabTorrents()
+            self.takedownSSH()
+            if self.s3_enabled:
+                self.logger.info("All files transferred to S3, now copying to local storage.")
+                self.getFromS3toLocal()
+                self.deleteS3files()
+            self.logger.info("Finished with all Downloads!")
         return didDownloadsHappen

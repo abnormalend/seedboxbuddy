@@ -10,7 +10,7 @@ from shutil import copyfile
 from rutorrent import rutorrent
 # from pushover import Client
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 def str2bool(v):
   return v.lower() in ("yes", "true", "t", "1")
@@ -27,26 +27,30 @@ def dockerPrepWork():
     foldersToCheck = ['/config', '/download']
     for folder in foldersToCheck:   # We need to make sure that the folders we need exist
         if not os.path.exists(folder):
-            logger.error("Please create a volume map for " + folder)
+            print("ERROR: Please create a volume map for " + folder)
             sys.exit(1)
-    logger.debug("checking to see if settings file exists")
     if not os.path.exists('/config/settings.ini'):  # If a settings file doesn't exist in the mapping copy our sample
         if not os.path.exists('/config/settings.ini.sample'):
             copyfile('/app/settings.ini.sample', '/config/settings.ini.sample')
-            logger.error("settings.ini.sample created in /config. Rename and add your settings")
+            print("ERROR: settings.ini.sample created in /config. Rename and add your settings")
             sys.exit(1)
         else:
-            logger.error("Please rename settings.ini.sample and add your settings")
+            print("ERROR: Please rename settings.ini.sample and add your settings")
             sys.exit(1)
 
 # Set up logging
 def getLogger(name):
+    log_level_info = {'logging.DEBUG': logging.DEBUG, 
+                    'logging.INFO': logging.INFO,
+                    'logging.WARNING': logging.WARNING,
+                    'logging.ERROR': logging.ERROR }
     myLogger = logging.getLogger(name)
-    myLogger.setLevel(logging.DEBUG)
+    myLogger.setLevel(log_level_info.get(config['settings']['log_level'], logging.INFO))
     if not myLogger.handlers:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(logging.INFO)
+
+        handler.setLevel(log_level_info.get(config['settings']['log_level'], logging.INFO))
         handler.setFormatter(formatter)
         myLogger.addHandler(handler)
     return myLogger
@@ -60,14 +64,19 @@ def getSettings():
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
     # Add trailing / if it's not there already
     if "settings" not in myConfig:
-        logger.error("Settings file not found.")
+        print("ERROR: Settings file not found.")        # Changed from logger because we want to init this before logger
         exit()
     if '/' not in myConfig['settings']['localSavePath'][-1:]:
         myConfig['settings']['localSavePath'] = myConfig['settings']['localSavePath'] + '/'
-    logger.info("Starting with the following settings:")
-    for key in myConfig['settings']:
-        logger.info(key + ": " + myConfig['settings'][key])
+    # logger.info("Starting with the following settings:")
+    # for key in myConfig['settings']:
+    #     logger.info(key + ": " + myConfig['settings'][key])
     return myConfig
+
+def displaySettings():
+    logger.debug("Starting with the following settings:")
+    for key in config['settings']:
+        logger.debug(key + ": " +config['settings'][key])
 
 # A few functions to handle the time
 def checkDownloadTime():
@@ -114,17 +123,19 @@ def howLongUntilDownloadTime():
         # starting_time, stopping_time = handleOvernightDownloadTime(starting_time, stopping_time)
         return starting_time - now
 
-
-logger = getLogger('sbb')
 # Check if we're in a container
 docker = runningInDocker()      #save this for future reference
 if docker:
-    logger.info("Running inside Docker was detected")
+    print("Running inside Docker was detected")
     dockerPrepWork()
+
+config = getSettings()
+logger = getLogger('sbb')
+displaySettings()
+
 
 logger.info("Version: " + __version__)
 # Get our config settings
-config = getSettings()
 limit_hours = str2bool(config['settings']['limit_hours'])
 start_time = config['settings']['start_time'].split(':')
 stop_time = config['settings']['stop_time'].split(':')
