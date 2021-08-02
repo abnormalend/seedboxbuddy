@@ -1,6 +1,6 @@
 cryptography==3.4.7
 paramiko>=2.7
-scp==0.11.0
+scp==0.13.6
 configparser==5.0.2
 requests>=2.20.0
 boto3>=1.17.109
