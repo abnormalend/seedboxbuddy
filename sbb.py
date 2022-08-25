@@ -19,7 +19,7 @@ def runningInDocker():
     with open('/proc/self/cgroup', 'r') as procfile:
         for line in procfile:
             fields = line.strip().split('/')
-            if fields[1] == 'docker':
+            if fields[1] == 'docker' or 'docker' in fields[2]:
                 return True
     return False
 
