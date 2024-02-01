@@ -20,6 +20,8 @@ def runningInDocker():
     with open('/proc/self/cgroup', 'r') as procfile:
         for line in procfile:
             fields = line.strip().split('/')
+            print("docker detector debug:")
+            print(fields)
             if fields[1] == 'docker' or (len(fields) >=3 and 'docker' in fields[2]):
                 return True
     return False
