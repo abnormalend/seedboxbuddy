@@ -1,3 +1,4 @@
+#!/home/brent/seedboxbuddy/venv/bin/python3
 """Manges a connection to ruTorrent."""
 import logging
 import requests
@@ -12,9 +13,9 @@ import errno
 from paramiko import SSHClient
 from scp import SCPClient
 
-class rutorrent:
+class RuTorrent:
     """Functions and things for managing an rutorrent server."""
-    __version__ = "1.0.1"
+    __version__ = "1.0.2"
 
     def __init__(self, config, logger):
 
@@ -28,7 +29,7 @@ class rutorrent:
         self.username = config['settings']['myUsername']
         self.password = config['settings']['myPassword']
         self.ignoreLabels = config['settings']['ignoreLabels'].split(',')
-        self.maxSize = self.parseSize(config['settings']['maxSize'])
+        self.maxSize = self.parse_size(config['settings']['maxSize'])
         self.logger.info(self.maxSize)
         self.pattern = config['settings']['downloadPattern']
         self.localSavePath = config['settings']['localSavePath']
@@ -45,7 +46,8 @@ class rutorrent:
         self.ssh = None
 
     # Parse the filesize
-    def parseSize(self, size):
+    def parse_size(self, size):
+        """Translates the size from string with units to integer."""
         units = {"B": 1, "KB": 10**3, "MB": 10**6, "GB": 10**9, "TB": 10**12}
         self.logger.debug(size)
         if len(size.split()) > 1:
@@ -337,3 +339,88 @@ class rutorrent:
                 self.deleteS3files()
             self.logger.info("Finished with all Downloads!")
         return didDownloadsHappen
+
+    def get_deletable_torrents(self):
+        url = "http://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
+        payload = {'mode': 'list'}
+        headers = {'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache",}
+        json_data = None
+        for attempt in range(self.grabtorrent_retry_count):
+            try:
+                self.logger.debug("Try #" + str(attempt))
+                response = requests.request("POST", url, data=payload, headers=headers, auth=(self.username,self.password))
+                json_data = response.json()
+            except Exception as e:
+                self.logger.error("something has gone wrong, unable to download torrent lists.  Will retry in " + str(self.grabtorrent_retry_delay) + " seconds.")
+                # self.logger.error(e)
+                time.sleep(self.grabtorrent_retry_delay)
+            else:
+                break
+        i = 0
+        if json_data:
+            for item in list(json_data["t"].items()):
+                # Must be downloaded, ratio > 1 (item 10), and finished (item 3)
+                if item[1][14] == 'downloaded' and int(item[1][3]) == 0:
+                    myName = item[1][4]
+                    myLabel = item[1][14]
+                    mySize = int(item[1][5])
+                    myFilePath =  item[1][25]
+                    myCreated = item[1][26]
+                    myMultiFile =  bool(int(item[1][33]))
+                    self.myTorrents[item[0]] = {
+                        'name': myName,
+                        'label': myLabel,
+                        'size': mySize,
+                        'file_path': myFilePath,
+                        'multi_file': myMultiFile,
+                        'created': myCreated
+                        }
+            self.logger.info("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
+            return True
+        else:
+            self.logger.error("unable to download")
+            return False
+    
+    def recursiveDeleter(self, sftp, path):
+        """Get the list of files, try to delete.  If we get an OS error, recursively enter that path"""
+        try:
+            file_list = sftp.listdir(path=path)
+        except FileNotFoundError:
+            try:
+                sftp.remove(path)
+                return True
+            except FileNotFoundError:
+                return False
+        for file in file_list:
+            try:
+                self.logger.info(f"Attempting to delete {path}/{file}")
+                sftp.remove(f"{path}/{file}")
+            except OSError:
+                self.logger.info(f"Could not delete {path}/{file}, assuming it is a non-empty directory")
+                self.recursiveDeleter(sftp, f"{path}/{file}")
+        sftp.rmdir(path)
+        return True
+
+    def deleteTorrentsAndFiles(self):
+        self.initSSH()
+        sftp = self.ssh.open_sftp()
+        base_path = './data'
+        for hash, item in self.myTorrents.items():
+            self.logger.debug(f"hash: {hash}")
+            self.logger.debug(item)
+            if self.recursiveDeleter(sftp, f"{base_path}/{item['name']}"):
+                self.deleteTorrent(hash)
+            else:
+                self.logger.warning("Not deleting torrent, may already be gone")
+
+    def deleteTorrent(self, hash):
+        url = "http://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
+        payload = {'mode': 'remove', 'hash': hash }
+        headers = {'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache"}
+        response = requests.request("POST", url, data=payload, 
+                                    headers=headers, auth=(self.username,self.password))
+        if response.status_code == 200:
+            return True
+        else:
+            self.logger.warning("Something may have gone wrong while trying to delete a torrent.")
+            return False
