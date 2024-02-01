@@ -60,8 +60,10 @@ def getLogger(name):
 def getSettings():
     myConfig = configparser.ConfigParser()
     if docker:
+        print("Docker detected")
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     else:
+        print("Docker not detected")
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
     # Add trailing / if it's not there already
     if "settings" not in myConfig:
