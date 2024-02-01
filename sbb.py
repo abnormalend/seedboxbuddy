@@ -178,7 +178,7 @@ while True:
             timeUntilDownload = howLongUntilDownloadTime()
             logger.info(f"It is not time to download, so we are going to wait a while.  We need to wait {str(timeUntilDownload)}")
     else:
-        # downloadReport = torrentManager.downloadTorrentsByPattern()
+        downloadReport = torrentManager.downloadTorrentsByPattern()
         if config['settings']['delete_torrents']:
             if torrentManager.get_deletable_torrents():
                 logger.info("Found torrents to delete...")
