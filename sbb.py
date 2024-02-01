@@ -17,14 +17,19 @@ def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
 
 def runningInDocker():
-    with open('/proc/self/cgroup', 'r') as procfile:
-        for line in procfile:
-            fields = line.strip().split('/')
-            print("docker detector debug:")
-            print(fields)
-            if fields[1] == 'docker' or (len(fields) >=3 and 'docker' in fields[2]):
-                return True
-    return False
+    path = '/proc/self/cgroup'
+    return (
+        os.path.exists('/.dockerenv') or
+        os.path.isfile(path) and any('docker' in line for line in open(path))
+    )
+    # with open('/proc/self/cgroup', 'r') as procfile:
+    #     for line in procfile:
+    #         fields = line.strip().split('/')
+    #         print("docker detector debug:")
+    #         print(fields)
+    #         if fields[1] == 'docker' or (len(fields) >=3 and 'docker' in fields[2]):
+    #             return True
+    # return False
 
 def dockerPrepWork():
     foldersToCheck = ['/config', '/download']
