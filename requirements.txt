@@ -1,4 +1,4 @@
-cryptography==36.0.1
+cryptography==41.0.6
 paramiko>=2.7
 scp==0.14.4
 configparser==5.3.0
