@@ -408,6 +408,7 @@ class RuTorrent:
         for hash, item in self.myTorrents.items():
             self.logger.debug(f"hash: {hash}")
             self.logger.debug(item)
+            self.logger.info(f"Deleting: {item['name']}")
             if self.recursiveDeleter(sftp, f"{base_path}/{item['name']}"):
                 self.deleteTorrent(hash)
             else:
