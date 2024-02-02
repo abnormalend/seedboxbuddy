@@ -3,6 +3,7 @@
 import logging
 import requests
 import time
+import stat
 import os
 import json
 import shutil
@@ -36,11 +37,15 @@ class RuTorrent:
         self.duplicate_action = config['settings']['duplicate_action'].lower()
         self.grabtorrent_retry_count = int(config['settings']['grabtorrent_retry_count'])
         self.grabtorrent_retry_delay = int(config['settings']['grabtorrent_retry_delay'])
-        self.s3_enabled = config['settings'].getboolean('s3_enabled')
         self.s3_bucket = config['settings']['s3_bucket']
         self.s3_aws_cli_loc = config['settings']['s3_aws_cli_loc']
         self.s3_key = config['settings']['s3_key']
         self.s3_secret = config['settings']['s3_secret']
+        self.download_method = config['settings']['download_method'].lower()
+        supported_download_methods = ['sftp', 'scp', 's3']
+        if self.download_method not in supported_download_methods:
+            self.logger.warning(f"Unsupported download method specified. '{self.download_method} should be one of {supported_download_methods}.  Defaulting to SCP'")
+            self.download_method = 'scp'
         # self.autolabel = dict(config['autolabel'])
         # self.grabTorrents()
         self.ssh = None
@@ -63,7 +68,11 @@ class RuTorrent:
         self.ssh = SSHClient()
         self.ssh.load_system_host_keys()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh.connect(self.server, username=self.username, password=self.password)
+        self.ssh.connect(self.server, 
+                         username=self.username, 
+                         password=self.password,
+                         timeout=60,
+                         channel_timeout=60)
 
     def takedownSSH(self):
         self.ssh.close()
@@ -170,6 +179,14 @@ class RuTorrent:
                     raise
         return downloadLocation
 
+    def createDownloadSubdir(self, path):
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+
     def getFileWithSCP(self, file, recursive, label):
         # ssh = SSHClient()
         # ssh.load_system_host_keys()
@@ -188,9 +205,31 @@ class RuTorrent:
             self.logger.error("download error: " + str(e))
             return False
 
-    def getFileWithSFTP(self, file, recursive, label, sftp):
+    def getFileWithSFTP(self, record):
+        name = record['name']
+        file = record['file_path']
+        directory = record['multi_file']
+        label = record['label']
         downloadLocation = self.createDownloadPath(label)
+        sftp = self.ssh.open_sftp()
+        if directory:
+            # self.createDownloadSubdir(f"{downloadLocation}/{name}")
+            self.recursiveDownloadSFTP(sftp, file, f"{downloadLocation}/{name}")
         
+
+    def recursiveDownloadSFTP(self, sftp, remote_path, local_path):
+        self.createDownloadSubdir(local_path)
+        for file in sftp.listdir_attr(path=remote_path):
+            if stat.S_ISREG(file.st_mode):          # Is this a file?
+                try:
+                    self.logger.debug(file.filename)
+                    sftp.get(f"{remote_path}/{file.filename}", f"{local_path}/{file.filename}")
+                except OSError as e:
+                    self.logger.debug(e)
+            elif stat.S_ISDIR(file.st_mode):        # Is this a directory?
+                self.recursiveDownloadSFTP(sftp, f"{remote_path}/{file.filename}", f"{local_path}/{file.filename}" )
+            else:
+                self.logger.warning("Unrecognized file type")
 
     def getFileWithS3(self, file, recursive, label):
         stdin = None
@@ -266,21 +305,27 @@ class RuTorrent:
             elif 'overwrite' in self.duplicate_action:
                 self.logger.warn("Overwriting because of duplicate action preference")
                 self.deleteLocalDownload(hash)
-                if self.getFileWithSCP(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label']):
-                    self.setLabel(hash,'downloaded')
-                    del self.myTorrents[hash]
-                    return True
+                return self.downloadBySelectedMethod(hash)
         else:
-            if self.s3_enabled:
-                if self.getFileWithS3(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label']):
-                    self.setLabel(hash,'downloaded')
-                    del self.myTorrents[hash]
-                    return True
-            else:
-                if self.getFileWithSCP(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label']):
-                    self.setLabel(hash,'downloaded')
-                    del self.myTorrents[hash]
-                    return True
+            return self.downloadBySelectedMethod(hash)
+
+
+    def downloadBySelectedMethod(self, hash):
+        r = False
+        if self.download_method == 's3':
+            r = self.getFileWithS3(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label'])
+        elif self.download_method == 'scp':
+            r = self.getFileWithSCP(self.myTorrents[hash]['file_path'], self.myTorrents[hash]['multi_file'],self.myTorrents[hash]['label'])
+        elif self.download_method == 'sftp':
+            r = self.getFileWithSFTP(self.myTorrents[hash])
+            
+        if r:
+            self.logger.debug("Download success, applying downloaded label")
+            self.setLabel(hash,'downloaded')
+            del self.myTorrents[hash]
+            return True
+        else:
+            return False
 
     def deleteLocalDownload(self, hash):
         downloadLocation = self.localSavePath + self.myTorrents[hash]['label'] + "/" + self.myTorrents[hash]['file_path'].rsplit('/', 1)[-1]
@@ -301,11 +346,6 @@ class RuTorrent:
         self.logger.debug(downloadLocation)
         if os.path.exists(downloadLocation):
             self.logger.info("Uh oh, "+ self.myTorrents[hash]['label'] + "already exists!")
-            # if os.path.getsize(downloadLocation) < self.myTorrents[hash]['size']):
-            #     self.logger.info("Downloaded size is less than what's on server so ")
-            # else:
-            #     self.logger.info("Downloaded size equals size on server")
-            #     return true
             self.logger.info("Local size: " + str(os.path.getsize(downloadLocation)))
             self.logger.info("Server size: " + str(self.myTorrents[hash]['size']))
             return True
@@ -330,20 +370,20 @@ class RuTorrent:
                 self.logger.info("Downloading " + self.myTorrents[nextTorrent]['name'] + "  size: " + "{:,}".format(self.myTorrents[nextTorrent]['size']))
                 downloadSize = self.myTorrents[nextTorrent]['size']
                 preDownloadTime = time.time()
-                self.downloadAndLabelByHash(nextTorrent)
-                didDownloadsHappen = True
-                postDownloadTime = time.time()
-                downloadTime = postDownloadTime - preDownloadTime
-                self.logger.info("Download took " + str(round(downloadTime)) + " seconds")
-                if (downloadSize/downloadTime)/1024 > 1000:
-                    self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024/1024)) + " megabytes/second")
-                else:
-                    self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024)) + " kilobytes/second")
-                self.logger.info("Delay for 5 seconds to give labels a chance to be applied.")
-                time.sleep(5)
+                if self.downloadAndLabelByHash(nextTorrent):
+                    didDownloadsHappen = True
+                    postDownloadTime = time.time()
+                    downloadTime = postDownloadTime - preDownloadTime
+                    self.logger.info("Download took " + str(round(downloadTime)) + " seconds")
+                    if (downloadSize/downloadTime)/1024 > 1000:
+                        self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024/1024)) + " megabytes/second")
+                    else:
+                        self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024)) + " kilobytes/second")
+                    self.logger.info("Delay for 5 seconds to give labels a chance to be applied.")
+                    time.sleep(5)
                 self.grabTorrents()
             self.takedownSSH()
-            if self.s3_enabled:
+            if self.download_method == 's3':
                 self.logger.info("All files transferred to S3, now copying to local storage.")
                 self.getFromS3toLocal()
                 self.deleteS3files()
