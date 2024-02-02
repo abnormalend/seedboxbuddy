@@ -2,14 +2,14 @@
   # 0: 1                              is_open
   # 1: 0                              is_hash_checking
   # 2: 1                              is_hash_checked
-  # 3: 1                              get_state
+  # 3: 1                              get_state  1 = seeding, 0 = finished
   # 4: filename.mp4         torrent name
   # 5: 281173737                      torrent size
   # 6: 1073                           completed chunks
   # 7: 1073                           size_chunks
   # 8: 281173737                      downloaded
   # 9: 0                              uploaded
-  # 10: 0                             ratio
+  # 10: 0                             ratio in thousanths 1000 = 1.0  500 = .5
   # 11: 0                             ul
   # 12: 0                             dl
   # 13: 262144                        chunk_size
