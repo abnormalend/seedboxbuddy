@@ -376,7 +376,7 @@ class RuTorrent:
                         'created': myCreated
                         }
             self.logger.info("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
-            return True
+            return len(self.myTorrents)
         else:
             self.logger.error("unable to download")
             return False
