@@ -159,13 +159,8 @@ class RuTorrent:
             self.logger.error("Unhandled search pattern.  Must be newest, oldest, smallest, or largest.")
             return False  #Something went wrong
 
-    def getFileWithSCP(self, file, recursive, label):
-        # ssh = SSHClient()
-        # ssh.load_system_host_keys()
-        # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # ssh.connect(self.server, username=self.username, password=self.password)
-        # Where are we putting this?  Make the folder if it doesn't already exist
-
+    def createDownloadPath(self, label):
+        """ Return download location."""
         downloadLocation = self.localSavePath + label + "/"
         if not os.path.exists(downloadLocation):
             try:
@@ -173,6 +168,17 @@ class RuTorrent:
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
+        return downloadLocation
+
+    def getFileWithSCP(self, file, recursive, label):
+        # ssh = SSHClient()
+        # ssh.load_system_host_keys()
+        # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # ssh.connect(self.server, username=self.username, password=self.password)
+        # Where are we putting this?  Make the folder if it doesn't already exist
+
+        downloadLocation = self.createDownloadPath(label)
+
         # SCPCLient takes a paramiko transport as an argument
         scp_client  = SCPClient(self.ssh.get_transport())
         try:
@@ -181,6 +187,10 @@ class RuTorrent:
         except paramiko.SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
+
+    def getFileWithSFTP(self, file, recursive, label, sftp):
+        downloadLocation = self.createDownloadPath(label)
+        
 
     def getFileWithS3(self, file, recursive, label):
         stdin = None
