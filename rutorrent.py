@@ -448,7 +448,7 @@ class RuTorrent:
                 sftp.remove(f"{path}/{file}")
             except OSError:
                 self.logger.debug(f"Could not delete {path}/{file}, assuming it is a non-empty directory")
-                self.logger.info("Deleting Recursively...")
+                # self.logger.info("Deleting Recursively...")
                 self.recursiveDeleter(sftp, f"{path}/{file}")
         sftp.rmdir(path)
         return True
