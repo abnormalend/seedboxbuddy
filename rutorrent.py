@@ -414,6 +414,7 @@ class RuTorrent:
                 self.deleteTorrent(hash)
             else:
                 self.logger.warning("Not deleting torrent, may already be gone")
+        self.myTorrents = None
 
     def deleteTorrent(self, hash):
         url = "http://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
