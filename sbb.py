@@ -22,14 +22,6 @@ def runningInDocker():
         os.path.exists('/.dockerenv') or
         os.path.isfile(path) and any('docker' in line for line in open(path))
     )
-    # with open('/proc/self/cgroup', 'r') as procfile:
-    #     for line in procfile:
-    #         fields = line.strip().split('/')
-    #         print("docker detector debug:")
-    #         print(fields)
-    #         if fields[1] == 'docker' or (len(fields) >=3 and 'docker' in fields[2]):
-    #             return True
-    # return False
 
 def dockerPrepWork():
     foldersToCheck = ['/config', '/download']
@@ -67,7 +59,6 @@ def getLogger(name):
 def getSettings():
     myConfig = configparser.ConfigParser()
     if docker:
-        print("Docker detected")
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     else:
         print("Docker not detected")
