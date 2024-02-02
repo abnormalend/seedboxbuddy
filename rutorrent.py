@@ -111,7 +111,8 @@ class RuTorrent:
                         'multi_file': myMultiFile,
                         'created': myCreated
                         }
-            self.logger.info("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
+            if self.myTorrents:
+                self.logger.info("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
             return True
         else:
             self.logger.error("unable to download")
