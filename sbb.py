@@ -7,21 +7,21 @@ import logging
 import sys
 import os
 from shutil import copyfile
-from rutorrent import rutorrent
+from rutorrent import RuTorrent
 # from pushover import Client
 
 __version__ = "1.1.0"
 
 def str2bool(v):
-  return v.lower() in ("yes", "true", "t", "1")
+    """Converts some common strings to a python boolean."""
+    return v.lower() in ("yes", "true", "t", "1")
 
 def runningInDocker():
-    with open('/proc/self/cgroup', 'r') as procfile:
-        for line in procfile:
-            fields = line.strip().split('/')
-            if fields[1] == 'docker' or 'docker' in fields[2]:
-                return True
-    return False
+    path = '/proc/self/cgroup'
+    return (
+        os.path.exists('/.dockerenv') or
+        os.path.isfile(path) and any('docker' in line for line in open(path))
+    )
 
 def dockerPrepWork():
     foldersToCheck = ['/config', '/download']
@@ -61,6 +61,7 @@ def getSettings():
     if docker:
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     else:
+        print("Docker not detected")
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
     # Add trailing / if it's not there already
     if "settings" not in myConfig:
@@ -143,7 +144,7 @@ stop_time = config['settings']['stop_time'].split(':')
 #   that here and load something besides rutorrent
 
 if config['settings']['serverType'].lower() == "rutorrent":
-    torrentManager = rutorrent(config, logger)
+    torrentManager = RuTorrent(config, logger)
 
 # Setup pushover
 # if config['settings']['pushover_user_key'] is not 'disabled':
@@ -166,9 +167,17 @@ while True:
                 logger.info("Downloads done.  We have " + str(downloadTimeLeft()) + " time left in the download window.  Will check again every " + str(timeUntilDownload))
         else:
             timeUntilDownload = howLongUntilDownloadTime()
-            logger.info("It is not time to download, so we are going to wait a while.  We need to wait " + str(timeUntilDownload))
+            logger.info(f"It is not time to download, so we are going to wait a while.  We need to wait {str(timeUntilDownload)}")
     else:
         downloadReport = torrentManager.downloadTorrentsByPattern()
+        if config['settings']['delete_torrents']:
+            if torrentManager.get_deletable_torrents():
+                logger.info("Found torrents to delete...")
+                torrentManager.deleteTorrentsAndFiles()
+                logger.info("Finished deleting downloaded torrents.")
+            else:
+                logger.info("No downloaded torrents found to delete.")
+
         # Coming soon with pushover support
         # if downloadReport and pushover:
         #     logger.info("sending report via pushover: "+ str(downloadReport))
