@@ -73,9 +73,7 @@ class RuTorrent:
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.ssh.connect(self.server, 
                          username=self.username, 
-                         password=self.password,
-                         timeout=self.timeout,
-                         channel_timeout=self.timeout)
+                         password=self.password)
 
     def takedownSSH(self):
         self.ssh.close()
@@ -201,7 +199,7 @@ class RuTorrent:
         downloadLocation = self.createDownloadPath(label)
 
         # SCPCLient takes a paramiko transport as an argument
-        scp_client  = SCPClient(self.ssh.get_transport())
+        scp_client  = SCPClient(self.ssh.get_transport(), socket_timeout=self.timeout)
         try:
             scp_client.get(file, downloadLocation, recursive=recursive)
             return True
