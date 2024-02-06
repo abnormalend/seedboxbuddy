@@ -13,6 +13,7 @@ import botocore
 import errno
 from paramiko import SSHClient
 from scp import SCPClient
+from scp import SCPException
 
 class RuTorrent:
     """Functions and things for managing an rutorrent server."""
@@ -204,7 +205,7 @@ class RuTorrent:
         try:
             scp_client.get(file, downloadLocation, recursive=recursive)
             return True
-        except scp.SCPException as e:
+        except SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
 
