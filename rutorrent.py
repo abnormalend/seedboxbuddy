@@ -31,7 +31,7 @@ class RuTorrent:
         self.password = config['settings']['myPassword']
         self.ignoreLabels = config['settings']['ignoreLabels'].split(',')
         self.maxSize = self.parse_size(config['settings']['maxSize'])
-        self.logger.info(self.maxSize)
+        self.logger.debug(self.maxSize)
         self.pattern = config['settings']['downloadPattern']
         self.localSavePath = config['settings']['localSavePath']
         self.duplicate_action = config['settings']['duplicate_action'].lower()
@@ -42,6 +42,7 @@ class RuTorrent:
         self.s3_key = config['settings']['s3_key']
         self.s3_secret = config['settings']['s3_secret']
         self.download_method = config['settings']['download_method'].lower()
+        self.show_speed = config.getboolean('settings', 'show_speed')
         supported_download_methods = ['sftp', 'scp', 's3']
         if self.download_method not in supported_download_methods:
             self.logger.warning(f"Unsupported download method specified. '{self.download_method} should be one of {supported_download_methods}.  Defaulting to SCP'")
@@ -112,7 +113,7 @@ class RuTorrent:
                         'created': myCreated
                         }
             if self.myTorrents:
-                self.logger.info("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
+                self.logger.debug("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
             return True
         else:
             self.logger.error("unable to download")
@@ -367,7 +368,7 @@ class RuTorrent:
             self.initSSH()
             while self.myTorrents:
                 nextTorrent = self.getTorrentByPattern()
-                self.logger.info("Download Queue Size: " + str(len(self.myTorrents)))
+                self.logger.debug("Download Queue Size: " + str(len(self.myTorrents)))
                 self.logger.info("Downloading " + self.myTorrents[nextTorrent]['name'] + "  size: " + "{:,}".format(self.myTorrents[nextTorrent]['size']))
                 downloadSize = self.myTorrents[nextTorrent]['size']
                 preDownloadTime = time.time()
@@ -375,12 +376,13 @@ class RuTorrent:
                     didDownloadsHappen = True
                     postDownloadTime = time.time()
                     downloadTime = postDownloadTime - preDownloadTime
-                    self.logger.info("Download took " + str(round(downloadTime)) + " seconds")
-                    if (downloadSize/downloadTime)/1024 > 1000:
-                        self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024/1024)) + " megabytes/second")
-                    else:
-                        self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024)) + " kilobytes/second")
-                    self.logger.info("Delay for 5 seconds to give labels a chance to be applied.")
+                    self.logger.debug("Download took " + str(round(downloadTime)) + " seconds")
+                    if self.show_speed:
+                        if (downloadSize/downloadTime)/1024 > 1000:
+                            self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024/1024)) + " megabytes/second")
+                        else:
+                            self.logger.info("Download Speed: " +  "{:,}".format(round((downloadSize/downloadTime)/1024)) + " kilobytes/second")
+                    self.logger.debug("Delay for 5 seconds to give labels a chance to be applied.")
                     time.sleep(5)
                 self.grabTorrents()
             self.takedownSSH()
@@ -426,7 +428,7 @@ class RuTorrent:
                         'multi_file': myMultiFile,
                         'created': myCreated
                         }
-            self.logger.info("Torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
+            self.logger.debug("Deletable torrents loaded successfully from ruTorrent. " + str(len(self.myTorrents)) + " records loaded.")
             return len(self.myTorrents)
         else:
             self.logger.error("unable to download")

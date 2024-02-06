@@ -176,7 +176,7 @@ while True:
                 torrentManager.deleteTorrentsAndFiles()
                 logger.info("Finished deleting downloaded torrents.")
             else:
-                logger.info("No downloaded torrents found to delete.")
+                logger.debug("No downloaded torrents found to delete.")
 
         # Coming soon with pushover support
         # if downloadReport and pushover:
