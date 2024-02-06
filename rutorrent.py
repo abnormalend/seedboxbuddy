@@ -43,6 +43,7 @@ class RuTorrent:
         self.s3_secret = config['settings']['s3_secret']
         self.download_method = config['settings']['download_method'].lower()
         self.show_speed = config.getboolean('settings', 'show_speed')
+        self.timeout = int(config['settings']['ssh_timeout'])
         supported_download_methods = ['sftp', 'scp', 's3']
         if self.download_method not in supported_download_methods:
             self.logger.warning(f"Unsupported download method specified. '{self.download_method} should be one of {supported_download_methods}.  Defaulting to SCP'")
@@ -72,8 +73,8 @@ class RuTorrent:
         self.ssh.connect(self.server, 
                          username=self.username, 
                          password=self.password,
-                         timeout=60,
-                         channel_timeout=60)
+                         timeout=self.timeout,
+                         channel_timeout=self.timeout)
 
     def takedownSSH(self):
         self.ssh.close()
@@ -203,20 +204,19 @@ class RuTorrent:
         try:
             scp_client.get(file, downloadLocation, recursive=recursive)
             return True
-        except paramiko.SCPException as e:
+        except scp.SCPException as e:
             self.logger.error("download error: " + str(e))
             return False
 
     def getFileWithSFTP(self, record):
         name = record['name']
         file = record['file_path']
-        directory = record['multi_file']
+        # directory = record['multi_file']
         label = record['label']
         downloadLocation = self.createDownloadPath(label)
         sftp = self.ssh.open_sftp()
-        if directory:
-            # self.createDownloadSubdir(f"{downloadLocation}/{name}")
-            self.recursiveDownloadSFTP(sftp, file, f"{downloadLocation}/{name}")
+        self.recursiveDownloadSFTP(sftp, file, f"{downloadLocation}/{name}")
+
         
 
     def recursiveDownloadSFTP(self, sftp, remote_path, local_path):
@@ -400,7 +400,7 @@ class RuTorrent:
         json_data = None
         for attempt in range(self.grabtorrent_retry_count):
             try:
-                self.logger.debug("Try #" + str(attempt))
+                # self.logger.debug("Try #" + str(attempt))
                 response = requests.request("POST", url, data=payload, headers=headers, auth=(self.username,self.password))
                 json_data = response.json()
             except Exception as e:
