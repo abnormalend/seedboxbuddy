@@ -43,7 +43,10 @@ start_time: 01:00
 stop_time: 05:00
 
 # New S3 Download section
-s3_enabled: True
+
+# Valid values == scp(default) sftp, s3
+download_method: sftp
+
 s3_bucket: my_bucket_name
 s3_key: mykeygoeshere
 s3_secret: mysecretgoeshere
