@@ -10,7 +10,7 @@ from shutil import copyfile
 from rutorrent import RuTorrent
 # from pushover import Client
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 def str2bool(v):
     """Converts some common strings to a python boolean."""
