@@ -45,7 +45,7 @@ class RuTorrent:
         self.download_method = config['settings']['download_method'].lower()
         self.show_speed = config.getboolean('settings', 'show_speed')
         self.timeout = int(config['settings']['ssh_timeout'])
-        supported_download_methods = ['sftp', 'scp', 's3']
+        supported_download_methods = ['scp', 's3'] #Leaving SFTP out until it's ready
         if self.download_method not in supported_download_methods:
             self.logger.warning(f"Unsupported download method specified. '{self.download_method} should be one of {supported_download_methods}.  Defaulting to SCP'")
             self.download_method = 'scp'
