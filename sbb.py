@@ -203,6 +203,7 @@ getEnvSettings()
 logger = getLogger('sbb')
 displaySettings()
 
+os.umask(0o002)
 
 logger.info("Version: " + __version__)
 # Get our config settings
