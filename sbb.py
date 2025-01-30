@@ -73,11 +73,14 @@ def getLogger(name):
 def getSettings():
     myConfig = configparser.ConfigParser()
     if docker and os.path.exists('/config'):
+        print("docker and path exists")
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     elif env_vars_in_use:
         if os.path.exists('/config'):
+            print("env var, path exists")
             myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
         else:
+            print("env var, no path")
             myConfig.read(['settings-defaults.ini'])
     else:
         print("Docker not detected")
