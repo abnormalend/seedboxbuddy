@@ -25,11 +25,15 @@ def runningInDocker():
 
 def runningInKubernetes():
     """See if this is kubernetes"""
-    return "KUBERNETES_SERVICE_HOST" in os.environ
+    if "KUBERNETES_SERVICE_HOST" in os.environ:
+        print("Kubernetes!")
+        return True
+    return False
 
 def checkForEnvVars():
     for key, value in os.environ.items():
         if key.startswith("SBB"):
+            print("Found ENV!S")
             return True
     return False
 
@@ -120,7 +124,7 @@ def getEnvSettings():
     for key, value in os.environ.items():
         if key.startswith("SBB"):
             config['settings'][env_map[key]] = value
-            logger.debug(f"Updating setting based on environment variable: {env_map[key]}={value}")
+            print(f"Updating setting based on environment variable: {env_map[key]}={value}")
 
 
 def displaySettings():
@@ -187,6 +191,8 @@ elif docker:
     print("Running inside Docker was detected")
     if not env_vars_in_use:
         dockerPrepWork()
+
+print("About to load settings")
 
 config = getSettings()
 getEnvSettings()
