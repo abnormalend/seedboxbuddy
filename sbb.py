@@ -103,6 +103,7 @@ def getEnvSettings():
         "SBB_LOCAL_SAVE_PATH": "localSavePath",
         "SBB_TORRENT_PATH": "myTorrentPath",
         "SBB_TORRENT_PATH_FILE": "myTorrentFilePath",
+        "SBB_SERVER": "myServer",
         "SBB_USERNAME": "myUsername",
         "SBB_PASSWORD": "myPassword",
         "SBB_DOWNLOAD_PATTERN": "downloadPattern",
