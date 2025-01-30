@@ -68,7 +68,7 @@ def getLogger(name):
 # Import settings
 def getSettings():
     myConfig = configparser.ConfigParser()
-    if docker:
+    if docker and os.path.exists('/config'):
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
     elif env_vars_in_use:
         if os.path.exists('/config'):
