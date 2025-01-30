@@ -81,7 +81,7 @@ def getSettings():
             myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
         else:
             print("env var, no path")
-            myConfig.read(['settings-defaults.ini'])
+            myConfig.read(['/app/settings-defaults.ini'])
     else:
         print("Docker not detected")
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
