@@ -177,6 +177,8 @@ def howLongUntilDownloadTime():
 # Check if we're in a container
 docker = runningInDocker()      #save this for future reference
 kubernetes = runningInKubernetes()
+if kubernetes:
+    docker = False
 env_vars_in_use = checkForEnvVars()
 
 if docker and not (kubernetes and env_vars_in_use):
