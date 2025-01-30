@@ -26,14 +26,14 @@ def runningInDocker():
 def runningInKubernetes():
     """See if this is kubernetes"""
     if "KUBERNETES_SERVICE_HOST" in os.environ:
-        print("Kubernetes!")
+        # print("Kubernetes!")
         return True
     return False
 
 def checkForEnvVars():
     for key, value in os.environ.items():
         if key.startswith("SBB"):
-            print("Found ENV!S")
+            # print("Found ENV!S")
             return True
     return False
 
@@ -123,12 +123,13 @@ def getEnvSettings():
         "SBB_DELETE_TORRENTS": "delete_torrents",
         "SBB_DOWNLOAD_METHOD": "download_method",
         "SBB_SHOW_SPEED": "show_speed",
-        "SBB_SSH_TIMEOUT": "ssh_timeout"
+        "SBB_SSH_TIMEOUT": "ssh_timeout",
+        "SBB_UMASK": "umask"
     }
     for key, value in os.environ.items():
         if key.startswith("SBB"):
             config['settings'][env_map[key]] = value
-            print(f"Updating setting based on environment variable: {env_map[key]}={value}")
+            # print(f"Updating setting based on environment variable: {env_map[key]}={value}")
 
 
 def displaySettings():
@@ -203,7 +204,7 @@ getEnvSettings()
 logger = getLogger('sbb')
 displaySettings()
 
-os.umask(0o002)
+os.umask(config['settings']['umask'])
 
 logger.info("Version: " + __version__)
 # Get our config settings
