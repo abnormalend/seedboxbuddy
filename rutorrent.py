@@ -86,6 +86,10 @@ class RuTorrent:
         for attempt in range(self.grabtorrent_retry_count):
             try:
                 self.logger.debug("Try #" + str(attempt))
+                self.logger.debug(f"url: {url}")
+                self.logger.debug(f"payload: {payload}")
+                self.logger.debug(f"headers: {headers}")
+                self.logger.debug(f"auth: {self.username}:{self.password}")
                 response = requests.request("POST", url, data=payload, headers=headers, auth=(self.username,self.password))
                 json_data = response.json()
             except Exception as e:
