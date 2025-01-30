@@ -404,7 +404,7 @@ class RuTorrent:
                 json_data = response.json()
             except Exception as e:
                 self.logger.error("something has gone wrong, unable to download torrent lists.  Will retry in " + str(self.grabtorrent_retry_delay) + " seconds.")
-                self.logger.debug(e)
+                self.logger.error(e)
                 time.sleep(self.grabtorrent_retry_delay)
             else:
                 break
