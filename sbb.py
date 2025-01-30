@@ -177,18 +177,16 @@ def howLongUntilDownloadTime():
 # Check if we're in a container
 docker = runningInDocker()      #save this for future reference
 kubernetes = runningInKubernetes()
-if kubernetes:
-    docker = False
 env_vars_in_use = checkForEnvVars()
 
-if docker and not (kubernetes and env_vars_in_use):
-    print("Running inside Docker was detected")
-    dockerPrepWork()
-elif kubernetes and not env_vars_in_use:
+if kubernetes:
     print("Running inside Kubernetes was detected")
-    dockerPrepWork()
-elif env_vars_in_use:
-    print("Env vars detected")
+    if not env_vars_in_use:
+        dockerPrepWork()
+elif docker:
+    print("Running inside Docker was detected")
+    if not env_vars_in_use:
+        dockerPrepWork()
 
 config = getSettings()
 getEnvSettings()
