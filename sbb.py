@@ -23,6 +23,16 @@ def runningInDocker():
         os.path.isfile(path) and any('docker' in line for line in open(path))
     )
 
+def runningInKubernetes():
+    """See if this is kubernetes"""
+    return "KUBERNETES_SERVICE_HOST" in os.environ
+
+def checkForEnvVars():
+    for key, value in os.environ.items():
+        if key.startswith("SBB"):
+            return True
+    return False
+
 def dockerPrepWork():
     foldersToCheck = ['/config', '/download']
     for folder in foldersToCheck:   # We need to make sure that the folders we need exist
@@ -60,6 +70,11 @@ def getSettings():
     myConfig = configparser.ConfigParser()
     if docker:
         myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
+    elif env_vars_in_use:
+        if os.path.exists('/config'):
+            myConfig.read(['settings-defaults.ini', '/config/settings.ini'])
+        else:
+            myConfig.read(['settings-defaults.ini'])
     else:
         print("Docker not detected")
         myConfig.read(['settings-defaults.ini', 'settings.ini'])
@@ -74,10 +89,45 @@ def getSettings():
     #     logger.info(key + ": " + myConfig['settings'][key])
     return myConfig
 
+def getEnvSettings():
+    env_map = {
+        "SBB_LOG_LEVEL": "log_level",
+        "SBB_SERVER_TYPE": "serverType",
+        "SBB_LOCAL_SAVE_PATH": "localSavePath",
+        "SBB_TORRENT_PATH": "myTorrentPath",
+        "SBB_TORRENT_PATH_FILE": "myTorrentFilePath",
+        "SBB_USERNAME": "myUsername",
+        "SBB_PASSWORD": "myPassword",
+        "SBB_DOWNLOAD_PATTERN": "downloadPattern",
+        "SBB_DUPLICATE_ACTION": "duplicate_action",
+        "SBB_MAX_SIZE": "maxsize",
+        "SBB_IGNORE_LABELS": "ignoreLabels",
+        "SBB_LIMIT_HOURS": "limit_hours",
+        "SBB_START_TIME": "start_time",
+        "SBB_STOP_TIME": "stop_time",
+        "SBB_PUSHOVER_USER_KEY": "pushover_user_key",
+        "SBB_RETRY_COUNT": "grabtorrent_retry_count",
+        "SBB_RETRY_DELAY": "grabtorrent_retry_delay",
+        "SBB_S3_BUCKET": "s3_bucket",
+        "SBB_S3_KEY": "s3_key",
+        "SBB_S3_SECRET": "s3_secret",
+        "SBB_S3_AWS_CLI_LOC": "s3_aws_cli_loc",
+        "SBB_DELETE_TORRENTS": "delete_torrents",
+        "SBB_DOWNLOAD_METHOD": "download_method",
+        "SBB_SHOW_SPEED": "show_speed",
+        "SBB_SSH_TIMEOUT": "ssh_timeout"
+    }
+    for key, value in os.environ.items():
+        if key.startswith("SBB"):
+            config['settings'][env_map[key]] = value
+            logger.debug(f"Updating setting based on environment variable: {env_map[key]}={value}")
+
+
 def displaySettings():
     logger.debug("Starting with the following settings:")
     for key in config['settings']:
         logger.debug(key + ": " +config['settings'][key])
+
 
 # A few functions to handle the time
 def checkDownloadTime():
@@ -126,11 +176,20 @@ def howLongUntilDownloadTime():
 
 # Check if we're in a container
 docker = runningInDocker()      #save this for future reference
-if docker:
+kubernetes = runningInKubernetes()
+env_vars_in_use = checkForEnvVars()
+
+if docker and not (kubernetes and env_vars_in_use):
     print("Running inside Docker was detected")
     dockerPrepWork()
+elif kubernetes and not env_vars_in_use:
+    print("Running inside Kubernetes was detected")
+    dockerPrepWork()
+elif env_vars_in_use:
+    print("Env vars detected")
 
 config = getSettings()
+getEnvSettings()
 logger = getLogger('sbb')
 displaySettings()
 
