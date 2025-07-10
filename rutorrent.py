@@ -79,7 +79,7 @@ class RuTorrent:
         self.ssh.close()
 
     def grabTorrents(self):
-        url = "http://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
+        url = "https://" + self.server + self.ruTorrentPath + "/httprpc/action.php"
         payload = {'mode': 'list'}
         headers = {'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache",}
         json_data = None
